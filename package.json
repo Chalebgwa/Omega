@@ -1,0 +1,47 @@
+{
+  "name": "omega",
+  "version": "1.0.0",
+  "description": "Something personal for the people I care about",
+  "main": "index.js",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Chalebgwa/Omega.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/Chalebgwa/Omega/issues"
+  },
+  "homepage": "https://github.com/Chalebgwa/Omega#readme",
+  "dependencies": {
+    "@prisma/adapter-libsql": "^7.4.0",
+    "@prisma/client": "^7.4.0",
+    "@tailwindcss/postcss": "^4.1.18",
+    "@types/node": "^25.2.3",
+    "@types/react": "^19.2.14",
+    "bcryptjs": "^3.0.3",
+    "dotenv": "^17.3.1",
+    "jsonwebtoken": "^9.0.3",
+    "next": "^16.1.6",
+    "next-auth": "^4.24.13",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "typescript": "^5.9.3"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/jsonwebtoken": "^9.0.10",
+    "autoprefixer": "^10.4.24",
+    "postcss": "^8.5.6",
+    "prisma": "^7.4.0",
+    "tailwindcss": "^4.1.18"
+  }
+}
