@@ -1,0 +1,68 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  name          String
+  passwordHash  String
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  messages      Message[]
+  entries       Entry[]
+  receivedMessages MessageRecipient[]
+}
+
+model Message {
+  id            String    @id @default(uuid())
+  title         String
+  content       String
+  videoUrl      String?
+  type          String    // "text" or "video"
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  authorId      String
+  author        User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  
+  recipients    MessageRecipient[]
+}
+
+model MessageRecipient {
+  id            String    @id @default(uuid())
+  messageId     String
+  message       Message   @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  
+  recipientId   String
+  recipient     User      @relation(fields: [recipientId], references: [id], onDelete: Cascade)
+  
+  accessedAt    DateTime?
+  
+  @@unique([messageId, recipientId])
+}
+
+model Entry {
+  id            String    @id @default(uuid())
+  title         String
+  content       String
+  videoUrl      String?
+  type          String    // "text" or "video"
+  isPublic      Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  authorId      String
+  author        User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  
+  nextEntryDate DateTime?
+  entryInterval Int       @default(30) // days
+}
