@@ -1,179 +1,111 @@
-# Omega - Last Will & Testament Website
+# VibeLoop (React + Firebase)
 
-A personal digital legacy platform where you can create meaningful messages and journal entries for your loved ones.
+VibeLoop is a client-only React app built for easy deployment on Firebase Hosting's free tier.
 
-## Features
+The previous Next.js + Prisma backend flow has been replaced with Firebase services:
+- Firebase Auth for login/register
+- Cloud Firestore for direct messages, public/private posts, comments, and reactions
+- Firebase Hosting for SPA deployment
 
-### 🔐 User Authentication
-- Secure registration and login system
-- JWT-based authentication
-- Password hashing with bcrypt
+## Stack
 
-### ✍️ Private Messages
-- Create text or video messages for specific recipients
-- Messages are only accessible to intended recipients
-- Support for multiple recipients per message
+- React 19 + TypeScript
+- Vite 7
+- React Router
+- Tailwind CSS + custom theme CSS
+- Firebase Auth + Firestore
 
-### 📔 Journal Entries
-- Time-gated journal entries with configurable intervals (default: 30 days)
-- Add entries over time at your own pace
-- Option to make entries public or keep them private
+## Routes
 
-### 📢 Soap Box (Public Page)
-- Share public thoughts and messages with the community
-- Public entries are visible to everyone
-- Great for sharing wisdom and reflections
+- `/` home
+- `/login`
+- `/register`
+- `/public` (public Soap Box entries)
+- `/dashboard`
+- `/dashboard/create-message`
+- `/dashboard/create-entry`
 
-### 🎥 Video Support
-- Upload video URLs for both messages and journal entries
-- Support for text and video content types
+## Local setup
 
-## Tech Stack
+1. Install dependencies:
 
-- **Framework**: Next.js 16 (React)
-- **Language**: TypeScript
-- **Database**: SQLite with Prisma ORM
-- **Authentication**: JWT (JSON Web Tokens)
-- **Styling**: Tailwind CSS
-- **Database Adapter**: @prisma/adapter-libsql
-
-## Getting Started
-
-### Prerequisites
-
-- Node.js 18+ installed
-- npm or yarn package manager
-
-### Installation
-
-1. Clone the repository:
-```bash
-git clone https://github.com/Chalebgwa/Omega.git
-cd Omega
-```
-
-2. Install dependencies:
 ```bash
 npm install
 ```
 
-3. Set up environment variables:
-Create a `.env` file in the root directory:
+2. Create `.env` from `.env.example` and fill Firebase web config values:
+
 ```env
-DATABASE_URL="file:./dev.db"
-JWT_SECRET="your-secret-key-here"
+VITE_FIREBASE_API_KEY="..."
+VITE_FIREBASE_AUTH_DOMAIN="..."
+VITE_FIREBASE_PROJECT_ID="..."
+VITE_FIREBASE_STORAGE_BUCKET="..."
+VITE_FIREBASE_MESSAGING_SENDER_ID="..."
+VITE_FIREBASE_APP_ID="..."
+VITE_USE_FIREBASE_EMULATORS="false"
 ```
 
-4. Run database migrations:
-```bash
-npx prisma migrate dev
-```
+3. Start dev server:
 
-5. Generate Prisma client:
-```bash
-npx prisma generate
-```
-
-6. Start the development server:
 ```bash
 npm run dev
 ```
 
-7. Open [http://localhost:3000](http://localhost:3000) in your browser.
+4. Build:
 
-## Database Schema
-
-### User
-- id, email, name, passwordHash
-- Relations: messages, entries, receivedMessages
-
-### Message
-- id, title, content, videoUrl, type (text/video)
-- Relations: author, recipients
-
-### MessageRecipient
-- Links messages to their intended recipients
-- Tracks when messages are accessed
-
-### Entry
-- id, title, content, videoUrl, type, isPublic
-- entryInterval: configurable time between entries (in days)
-- nextEntryDate: automatically calculated based on interval
-- Relations: author
-
-## Usage
-
-### Creating an Account
-1. Navigate to the registration page
-2. Enter your name, email, and password
-3. Click "Sign up"
-
-### Creating a Private Message
-1. Log in to your account
-2. Go to Dashboard → Create Message
-3. Enter message title and content (or video URL)
-4. Add recipient email addresses (comma-separated)
-5. Click "Create Message"
-
-### Creating a Journal Entry
-1. Log in to your account
-2. Go to Dashboard → Journal Entries → Create Entry
-3. Enter entry title and content
-4. Set the interval for your next entry (default: 30 days)
-5. Optionally check "Make this entry public" for Soap Box
-6. Click "Create Entry"
-
-### Viewing Public Entries
-- Navigate to the "Soap Box" page
-- No login required to view public entries
-
-## Security
-
-- Passwords are hashed using bcrypt
-- JWT tokens for secure authentication
-- Environment variables for sensitive data
-- Input validation on all forms
-- No SQL injection vulnerabilities (using Prisma ORM)
-
-## Development
-
-### Building for Production
 ```bash
-JWT_SECRET=your-secret npm run build
+npm run build
 ```
 
-### Running in Production
+## Firebase project setup
+
+If starting from scratch on a free plan:
+
+1. Create/select project:
+
 ```bash
-npm start
+firebase use <project-id>
 ```
 
-## Project Structure
+2. Create a Web App and get config:
 
-```
-Omega/
-├── app/                      # Next.js app directory
-│   ├── api/                 # API routes
-│   │   ├── auth/           # Authentication endpoints
-│   │   ├── messages/       # Message endpoints
-│   │   └── entries/        # Entry endpoints
-│   ├── dashboard/          # Dashboard pages
-│   ├── login/              # Login page
-│   ├── register/           # Registration page
-│   ├── public/             # Public Soap Box page
-│   └── page.tsx            # Homepage
-├── lib/                     # Utility libraries
-│   ├── auth.ts             # Authentication helpers
-│   └── prisma.ts           # Prisma client
-├── prisma/                  # Database schema and migrations
-│   └── schema.prisma       # Database schema
-├── components/              # Reusable React components
-└── public/                  # Static assets
+```bash
+firebase apps:create WEB omega-web
+firebase apps:sdkconfig WEB <app-id>
 ```
 
-## License
+3. Enable Email/Password provider in Firebase Console:
+- Authentication -> Sign-in method -> Email/Password -> Enable
 
-See LICENSE file for details.
+4. Deploy Firestore rules and indexes:
 
-## Acknowledgments
+```bash
+firebase deploy --only firestore:rules,firestore:indexes
+```
 
-Built with ❤️ for the people I care about.
+5. Deploy Hosting:
+
+```bash
+npm run build
+firebase deploy --only hosting
+```
+
+## Firestore collections
+
+- `users/{uid}`
+  - `name`, `email`, timestamps
+- `messages/{id}`
+  - `authorId`, `authorName`, `title`, `content|videoUrl`, `recipientIds`, `recipientNames`, `recipientEmails`, timestamps
+- `entries/{id}`
+  - `authorId`, `authorName`, `title`, `content|videoUrl`, `type`, `isPublic`, `entryInterval`, `nextEntryDate`, timestamps
+- `entryComments/{id}`
+  - `entryId`, `authorId`, `authorName`, `content`, timestamps
+- `entryReactions/{entryId_userId}`
+  - `entryId`, `userId`, `userName`, `reactionType` (`love|facts|wow|support`), timestamps
+
+## Security config
+
+- Firestore rules: `firestore.rules`
+- Firestore indexes: `firestore.indexes.json`
+
+Deploy them with Firebase CLI before using the app in production.

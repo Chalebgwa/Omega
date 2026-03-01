@@ -1,0 +1,80 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function entryPath(entryId) {
+      return /databases/$(database)/documents/entries/$(entryId);
+    }
+
+    function entryExists(entryId) {
+      return exists(entryPath(entryId));
+    }
+
+    function isPublicEntry(entryId) {
+      return entryExists(entryId) && get(entryPath(entryId)).data.isPublic == true;
+    }
+
+    match /users/{userId} {
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId);
+      allow read: if signedIn();
+      allow delete: if false;
+    }
+
+    match /messages/{messageId} {
+      allow create: if signedIn()
+        && request.resource.data.authorId == request.auth.uid
+        && request.resource.data.recipientIds is list
+        && request.resource.data.recipientIds.size() > 0
+        && request.resource.data.type in ['text', 'video'];
+
+      allow read, update, delete: if signedIn() && resource.data.authorId == request.auth.uid;
+    }
+
+    match /entries/{entryId} {
+      allow create: if signedIn()
+        && request.resource.data.authorId == request.auth.uid
+        && request.resource.data.type in ['text', 'video']
+        && request.resource.data.isPublic is bool;
+
+      allow read: if resource.data.isPublic == true
+        || (signedIn() && resource.data.authorId == request.auth.uid);
+
+      allow update, delete: if signedIn() && resource.data.authorId == request.auth.uid;
+    }
+
+    match /entryComments/{commentId} {
+      allow create: if signedIn()
+        && request.resource.data.authorId == request.auth.uid
+        && request.resource.data.entryId is string
+        && request.resource.data.content is string
+        && request.resource.data.content.size() > 0
+        && isPublicEntry(request.resource.data.entryId);
+
+      allow read: if resource.data.entryId is string
+        && isPublicEntry(resource.data.entryId);
+
+      allow update, delete: if signedIn() && resource.data.authorId == request.auth.uid;
+    }
+
+    match /entryReactions/{reactionId} {
+      allow create, update: if signedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.entryId is string
+        && request.resource.data.reactionType in ['love', 'facts', 'wow', 'support']
+        && isPublicEntry(request.resource.data.entryId);
+
+      allow read: if resource.data.entryId is string
+        && isPublicEntry(resource.data.entryId);
+
+      allow delete: if signedIn() && resource.data.userId == request.auth.uid;
+    }
+  }
+}

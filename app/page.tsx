@@ -1,82 +1,120 @@
 import Link from 'next/link'
 
 export default function Home() {
-  return (
-    <main className="min-h-screen flex flex-col">
-      {/* Navigation */}
-      <nav className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16 items-center">
-            <div className="flex-shrink-0">
-              <h1 className="text-2xl font-bold text-gray-900">Omega</h1>
-            </div>
-            <div className="flex space-x-4">
-              <Link href="/public" className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md">
-                Soap Box
-              </Link>
-              <Link href="/login" className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md">
-                Login
-              </Link>
-              <Link href="/register" className="bg-blue-600 text-white hover:bg-blue-700 px-4 py-2 rounded-md">
-                Sign Up
-              </Link>
-            </div>
-          </div>
-        </div>
-      </nav>
+  const features = [
+    {
+      token: 'MSG',
+      title: 'Private Message Vaults',
+      description: 'Write direct notes for the people you care about and keep them in one calm, secure timeline.',
+    },
+    {
+      token: 'LOG',
+      title: 'Timed Journal Rhythm',
+      description: 'Add thoughtful entries at your own cadence so your archive grows naturally over time.',
+    },
+    {
+      token: 'PUB',
+      title: 'Public Soap Box',
+      description: 'Share selected reflections openly while keeping your most personal words private.',
+    },
+  ]
 
-      {/* Hero Section */}
-      <div className="flex-grow flex items-center justify-center px-4">
-        <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-5xl font-bold text-gray-900 mb-6">
-            Your Legacy, Your Words
-          </h2>
-          <p className="text-xl text-gray-600 mb-8">
-            Create meaningful messages and video recordings for your loved ones.
-            Share your thoughts, memories, and wisdom that will last forever.
-          </p>
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12">
-              <div className="bg-white p-6 rounded-lg shadow-md">
-                <div className="text-4xl mb-4">✍️</div>
-                <h3 className="text-xl font-semibold mb-2">Personal Messages</h3>
-                <p className="text-gray-600">
-                  Write or record video messages for specific individuals
-                </p>
-              </div>
-              <div className="bg-white p-6 rounded-lg shadow-md">
-                <div className="text-4xl mb-4">📔</div>
-                <h3 className="text-xl font-semibold mb-2">Journal Entries</h3>
-                <p className="text-gray-600">
-                  Add entries over time with customizable intervals
-                </p>
-              </div>
-              <div className="bg-white p-6 rounded-lg shadow-md">
-                <div className="text-4xl mb-4">📢</div>
-                <h3 className="text-xl font-semibold mb-2">Soap Box</h3>
-                <p className="text-gray-600">
-                  Share public thoughts and messages with the world
-                </p>
-              </div>
-            </div>
-          </div>
-          <div className="mt-12">
-            <Link 
-              href="/register" 
-              className="inline-block bg-blue-600 text-white text-lg px-8 py-3 rounded-lg hover:bg-blue-700 transition"
-            >
-              Get Started
+  const metrics = [
+    { value: '2 modes', label: 'private + public' },
+    { value: '1 feed', label: 'all your entries' },
+    { value: 'forever', label: 'captured in one place' },
+  ]
+
+  return (
+    <main className="omega-page flex flex-col">
+      <header className="omega-shell">
+        <nav className="omega-nav fade-up">
+          <Link href="/" className="omega-brand">
+            <span className="brand-dot" aria-hidden="true" />
+            Omega
+          </Link>
+          <div className="nav-links">
+            <Link href="/public" className="nav-pill">
+              Soap Box
+            </Link>
+            <Link href="/login" className="nav-pill">
+              Login
+            </Link>
+            <Link href="/register" className="btn btn-primary">
+              Create Account
             </Link>
           </div>
-        </div>
-      </div>
+        </nav>
+      </header>
 
-      {/* Footer */}
-      <footer className="bg-white border-t mt-12">
-        <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-          <p className="text-center text-gray-500">
-            © 2024 Omega. Something personal for the people I care about.
-          </p>
+      <section className="omega-shell mt-4 flex-grow">
+        <div className="hero-grid">
+          <article className="panel panel-strong p-6 md:p-8 float-in">
+            <span className="eyebrow">Legacy Archive</span>
+            <h1 className="hero-title">Give your words a final polished home.</h1>
+            <p className="hero-subtitle">
+              Omega helps you craft messages, journals, and public reflections with enough warmth to feel personal and enough
+              structure to stay clear for years.
+            </p>
+
+            <div className="button-row mt-7">
+              <Link href="/register" className="btn btn-primary">
+                Start Building
+              </Link>
+              <Link href="/public" className="btn btn-ghost">
+                Explore Soap Box
+              </Link>
+            </div>
+
+            <p className="section-subtitle mt-6">
+              Built for letters, video memories, and recurring notes you never want to lose.
+            </p>
+          </article>
+
+          <aside className="panel panel-dark p-6 md:p-7 float-in" style={{ animationDelay: '120ms' }}>
+            <span className="pill">At a glance</span>
+            <h2 className="mt-3 text-3xl font-semibold leading-tight">One place for private keepsakes and public voice.</h2>
+            <p className="mt-3 text-sm text-slate-200/90">
+              Keep your intentions clear with entries that are easy to revisit, schedule, and share when it matters most.
+            </p>
+
+            <div className="metric-grid mt-7">
+              {metrics.map((metric) => (
+                <div key={metric.label} className="metric">
+                  <strong>{metric.value}</strong>
+                  <span>{metric.label}</span>
+                </div>
+              ))}
+            </div>
+          </aside>
+        </div>
+
+        <div className="feature-grid mt-4">
+          {features.map((feature, index) => (
+            <article
+              key={feature.title}
+              className="feature-card float-in"
+              style={{ animationDelay: `${190 + index * 90}ms` }}
+            >
+              <span className="feature-token">{feature.token}</span>
+              <h3 className="text-lg font-semibold">{feature.title}</h3>
+              <p className="section-subtitle mt-2">{feature.description}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <footer className="omega-shell mt-5">
+        <div className="panel px-5 py-4 text-center">
+          <p className="footer-note">Omega is a personal archive for the people and moments that should never fade.</p>
+          <div className="button-row mt-3 justify-center">
+            <Link href="/register" className="btn btn-secondary">
+              Begin Your Archive
+            </Link>
+            <Link href="/login" className="btn btn-ghost">
+              Continue Writing
+            </Link>
+          </div>
         </div>
       </footer>
     </main>

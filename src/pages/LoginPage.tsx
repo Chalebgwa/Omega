@@ -1,11 +1,11 @@
-'use client'
-
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import Link from 'next/link'
+import { Link, useNavigate } from 'react-router-dom'
+import { useAuth } from '../contexts/AuthContext'
+import { APP_NAME, SOAP_BOX_NAME } from '../lib/brand'
 
-export default function LoginPage() {
-  const router = useRouter()
+export function LoginPage() {
+  const navigate = useNavigate()
+  const { login } = useAuth()
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -19,22 +19,11 @@ export default function LoginPage() {
     setLoading(true)
 
     try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Login failed')
-      }
-
-      localStorage.setItem('token', data.token)
-      router.push('/dashboard')
-    } catch (err: any) {
-      setError(err.message)
+      await login(formData.email, formData.password)
+      navigate('/dashboard')
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Login failed'
+      setError(message)
     } finally {
       setLoading(false)
     }
@@ -44,15 +33,15 @@ export default function LoginPage() {
     <div className="omega-page">
       <header className="omega-shell">
         <nav className="omega-nav fade-up">
-          <Link href="/" className="omega-brand">
+          <Link to="/" className="omega-brand">
             <span className="brand-dot" aria-hidden="true" />
-            Omega
+            {APP_NAME}
           </Link>
           <div className="nav-links">
-            <Link href="/public" className="nav-pill">
-              Soap Box
+            <Link to="/public" className="nav-pill">
+              {SOAP_BOX_NAME}
             </Link>
-            <Link href="/register" className="btn btn-primary">
+            <Link to="/register" className="btn btn-primary">
               Create Account
             </Link>
           </div>
@@ -63,23 +52,23 @@ export default function LoginPage() {
         <div className="grid gap-4 lg:grid-cols-[1.05fr_1fr]">
           <section className="panel panel-dark p-6 md:p-8 float-in">
             <span className="pill">Welcome back</span>
-            <h1 className="mt-3 text-4xl leading-tight">Re-enter your archive and continue your story.</h1>
+            <h1 className="mt-3 text-4xl leading-tight">Jump back into your social circle.</h1>
             <p className="mt-3 text-sm text-slate-200/90">
-              Pick up your private letters, publish a new note, or keep your journal rhythm moving.
+              Open your DMs, post new updates, and join ongoing conversations on {SOAP_BOX_NAME}.
             </p>
 
             <div className="metric-grid mt-8">
               <div className="metric">
                 <strong>Private</strong>
-                <span>message collections</span>
+                <span>direct messages</span>
               </div>
               <div className="metric">
-                <strong>Timed</strong>
-                <span>entry reminders</span>
+                <strong>Personal</strong>
+                <span>post timeline</span>
               </div>
               <div className="metric">
                 <strong>Public</strong>
-                <span>soap box posts</span>
+                <span>reactions + comments</span>
               </div>
             </div>
           </section>
@@ -90,7 +79,7 @@ export default function LoginPage() {
                 <h2 className="section-title">Sign in</h2>
                 <p className="section-subtitle">
                   New here?{' '}
-                  <Link href="/register" className="underline decoration-2 decoration-amber-500 underline-offset-4">
+                  <Link to="/register" className="underline decoration-2 decoration-amber-500 underline-offset-4">
                     Create an account
                   </Link>
                   .
@@ -133,7 +122,7 @@ export default function LoginPage() {
                 <button type="submit" disabled={loading} className="btn btn-primary flex-1 disabled:cursor-not-allowed disabled:opacity-70">
                   {loading ? 'Signing in...' : 'Sign in'}
                 </button>
-                <Link href="/" className="btn btn-ghost">
+                <Link to="/" className="btn btn-ghost">
                   Back Home
                 </Link>
               </div>

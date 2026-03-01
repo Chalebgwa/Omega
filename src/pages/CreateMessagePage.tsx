@@ -1,11 +1,12 @@
-'use client'
-
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import Link from 'next/link'
+import { Link, useNavigate } from 'react-router-dom'
+import { createMessage } from '../lib/data'
+import { useAuth } from '../contexts/AuthContext'
+import { APP_NAME, SOAP_BOX_NAME } from '../lib/brand'
 
-export default function CreateMessagePage() {
-  const router = useRouter()
+export function CreateMessagePage() {
+  const navigate = useNavigate()
+  const { user } = useAuth()
   const [formData, setFormData] = useState({
     title: '',
     content: '',
@@ -19,43 +20,32 @@ export default function CreateMessagePage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+
+    if (!user) {
+      navigate('/login')
+      return
+    }
+
     setLoading(true)
-
     try {
-      const token = localStorage.getItem('token')
-      if (!token) {
-        router.push('/login')
-        return
-      }
-
       const recipientEmails = formData.recipientEmails
         .split(',')
         .map((email) => email.trim())
         .filter((email) => email.length > 0)
 
-      const response = await fetch('/api/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          title: formData.title,
-          content: formData.content,
-          type: formData.type,
-          recipientEmails,
-          videoUrl: formData.type === 'video' ? formData.videoUrl : null,
-        }),
+      await createMessage({
+        title: formData.title,
+        content: formData.content,
+        type: formData.type === 'video' ? 'video' : 'text',
+        recipientEmails,
+        videoUrl: formData.type === 'video' ? formData.videoUrl : undefined,
+        author: user,
       })
 
-      if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.error || 'Failed to create message')
-      }
-
-      router.push('/dashboard')
-    } catch (err: any) {
-      setError(err.message)
+      navigate('/dashboard')
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to create message'
+      setError(message)
     } finally {
       setLoading(false)
     }
@@ -65,16 +55,16 @@ export default function CreateMessagePage() {
     <div className="omega-page">
       <header className="omega-shell">
         <nav className="omega-nav fade-up">
-          <Link href="/dashboard" className="omega-brand">
+          <Link to="/dashboard" className="omega-brand">
             <span className="brand-dot" aria-hidden="true" />
-            Omega
+            {APP_NAME}
           </Link>
           <div className="nav-links">
-            <Link href="/dashboard" className="nav-pill">
+            <Link to="/dashboard" className="nav-pill">
               Dashboard
             </Link>
-            <Link href="/public" className="nav-pill">
-              Soap Box
+            <Link to="/public" className="nav-pill">
+              {SOAP_BOX_NAME}
             </Link>
           </div>
         </nav>
@@ -85,10 +75,10 @@ export default function CreateMessagePage() {
           <div className="section-head mb-4">
             <div>
               <span className="eyebrow">Compose</span>
-              <h1 className="section-title mt-2">Create Private Message</h1>
-              <p className="section-subtitle">Write a note or attach a video for one or more recipients.</p>
+              <h1 className="section-title mt-2">Create Direct Message</h1>
+              <p className="section-subtitle">Send a private message for any occasion, with text or video.</p>
             </div>
-            <Link href="/dashboard" className="btn btn-ghost">
+            <Link to="/dashboard" className="btn btn-ghost">
               Back to Dashboard
             </Link>
           </div>
@@ -124,17 +114,17 @@ export default function CreateMessagePage() {
 
             {formData.type === 'text' ? (
               <div className="field">
-                <label htmlFor="content">Message Content *</label>
-                <textarea
-                  id="content"
-                  required
-                  rows={8}
-                  className="textarea"
-                  value={formData.content}
-                  onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-                  placeholder="Write your message here..."
-                />
-              </div>
+              <label htmlFor="content">Message Content *</label>
+              <textarea
+                id="content"
+                required
+                rows={8}
+                className="textarea"
+                value={formData.content}
+                onChange={(e) => setFormData({ ...formData, content: e.target.value })}
+                placeholder="Write your message..."
+              />
+            </div>
             ) : (
               <div className="field">
                 <label htmlFor="videoUrl">Video URL *</label>
@@ -162,14 +152,16 @@ export default function CreateMessagePage() {
                 onChange={(e) => setFormData({ ...formData, recipientEmails: e.target.value })}
                 placeholder="email1@example.com, email2@example.com"
               />
-              <p className="field-help">Separate multiple addresses with commas. Recipients need Omega accounts.</p>
+              <p className="field-help">
+                Separate multiple addresses with commas. Recipients must already be registered on {APP_NAME}.
+              </p>
             </div>
 
             <div className="button-row pt-2">
               <button type="submit" disabled={loading} className="btn btn-primary disabled:cursor-not-allowed disabled:opacity-70">
-                {loading ? 'Creating...' : 'Create Message'}
+                {loading ? 'Sending...' : 'Send Message'}
               </button>
-              <Link href="/dashboard" className="btn btn-ghost">
+              <Link to="/dashboard" className="btn btn-ghost">
                 Cancel
               </Link>
             </div>

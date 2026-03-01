@@ -50,11 +50,11 @@ export default function DashboardPage() {
     try {
       const [messagesRes, entriesRes] = await Promise.all([
         fetch('/api/messages', {
-          headers: { Authorization: `Bearer ${token}` }
+          headers: { Authorization: `Bearer ${token}` },
         }),
         fetch('/api/entries', {
-          headers: { Authorization: `Bearer ${token}` }
-        })
+          headers: { Authorization: `Bearer ${token}` },
+        }),
       ])
 
       if (messagesRes.ok) {
@@ -90,166 +90,179 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-lg">Loading...</div>
+      <div className="omega-page flex items-center justify-center px-4">
+        <div className="panel p-7 text-center">
+          <h1 className="text-2xl">Loading dashboard...</h1>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Navigation */}
-      <nav className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16 items-center">
-            <div className="flex items-center space-x-8">
-              <Link href="/dashboard" className="text-2xl font-bold text-gray-900">
-                Omega
-              </Link>
-              <Link href="/public" className="text-gray-700 hover:text-gray-900">
-                Soap Box
-              </Link>
+    <div className="omega-page">
+      <header className="omega-shell">
+        <nav className="omega-nav fade-up">
+          <div className="flex items-center gap-2">
+            <Link href="/dashboard" className="omega-brand">
+              <span className="brand-dot" aria-hidden="true" />
+              Omega
+            </Link>
+            <Link href="/public" className="nav-pill">
+              Soap Box
+            </Link>
+          </div>
+
+          <div className="nav-links">
+            <span className="pill">{user?.name || 'Member'}</span>
+            <button onClick={handleLogout} className="btn btn-ghost" type="button">
+              Logout
+            </button>
+          </div>
+        </nav>
+      </header>
+
+      <main className="omega-shell mt-5">
+        <section className="panel panel-strong p-5 md:p-6 fade-up">
+          <div className="section-head mb-4">
+            <div>
+              <h1 className="section-title">Dashboard</h1>
+              <p className="section-subtitle">Manage your private messages and scheduled journal entries.</p>
             </div>
-            <div className="flex items-center space-x-4">
-              <span className="text-gray-700">{user?.name}</span>
-              <button
-                onClick={handleLogout}
-                className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md"
-              >
-                Logout
-              </button>
+            <div className="button-row">
+              <Link href="/dashboard/create-message" className="btn btn-secondary">
+                New Message
+              </Link>
+              <Link href="/dashboard/create-entry" className="btn btn-primary">
+                New Entry
+              </Link>
             </div>
           </div>
-        </div>
-      </nav>
 
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Dashboard</h1>
-          <p className="text-gray-600">Manage your messages and journal entries</p>
-        </div>
+          <div className="grid gap-3 md:grid-cols-3">
+            <div className="entity-card">
+              <p className="pill">Messages</p>
+              <h2 className="mt-2 text-3xl font-semibold">{messages.length}</h2>
+              <p className="entity-meta">Private notes addressed to recipients</p>
+            </div>
+            <div className="entity-card">
+              <p className="pill">Entries</p>
+              <h2 className="mt-2 text-3xl font-semibold">{entries.length}</h2>
+              <p className="entity-meta">Journal moments across your timeline</p>
+            </div>
+            <div className="entity-card">
+              <p className="pill">Next entry</p>
+              <h2 className="mt-2 text-xl font-semibold">
+                {canCreateEntry()
+                  ? 'Ready now'
+                  : entries[0]?.nextEntryDate
+                    ? new Date(entries[0].nextEntryDate).toLocaleDateString()
+                    : 'N/A'}
+              </h2>
+              <p className="entity-meta">When your next timed journal entry unlocks</p>
+            </div>
+          </div>
+        </section>
 
-        {/* Tabs */}
-        <div className="border-b border-gray-200 mb-6">
-          <nav className="-mb-px flex space-x-8">
+        <section className="mt-4">
+          <div className="tab-row fade-up" style={{ animationDelay: '110ms' }}>
             <button
               onClick={() => setActiveTab('messages')}
-              className={`${
-                activeTab === 'messages'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              } whitespace-nowrap py-4 px-1 border-b-2 font-medium`}
+              className={`tab-btn ${activeTab === 'messages' ? 'active' : ''}`}
+              type="button"
             >
               Messages ({messages.length})
             </button>
             <button
               onClick={() => setActiveTab('entries')}
-              className={`${
-                activeTab === 'entries'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              } whitespace-nowrap py-4 px-1 border-b-2 font-medium`}
+              className={`tab-btn ${activeTab === 'entries' ? 'active' : ''}`}
+              type="button"
             >
               Journal Entries ({entries.length})
             </button>
-          </nav>
-        </div>
+          </div>
+        </section>
 
-        {/* Messages Tab */}
         {activeTab === 'messages' && (
-          <div>
-            <div className="mb-6 flex justify-between items-center">
-              <h2 className="text-xl font-semibold">Private Messages</h2>
-              <Link
-                href="/dashboard/create-message"
-                className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
-              >
+          <section className="panel panel-strong p-5 md:p-6 mt-4 float-in" style={{ animationDelay: '130ms' }}>
+            <div className="section-head">
+              <div>
+                <h2 className="text-2xl">Private Messages</h2>
+                <p className="section-subtitle">A direct line to the people you choose.</p>
+              </div>
+              <Link href="/dashboard/create-message" className="btn btn-primary">
                 Create Message
               </Link>
             </div>
-            <div className="grid gap-4">
+
+            <div className="card-list">
               {messages.length === 0 ? (
-                <div className="bg-white p-8 rounded-lg shadow text-center text-gray-500">
-                  No messages yet. Create your first message to get started.
-                </div>
+                <div className="empty-state">No messages yet. Create your first private note to get started.</div>
               ) : (
                 messages.map((message) => (
-                  <div key={message.id} className="bg-white p-6 rounded-lg shadow">
-                    <div className="flex justify-between items-start">
+                  <article key={message.id} className="entity-card">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
-                        <h3 className="text-lg font-semibold mb-2">{message.title}</h3>
-                        <p className="text-sm text-gray-600">
-                          Type: {message.type} | Created: {new Date(message.createdAt).toLocaleDateString()}
-                        </p>
-                        <p className="text-sm text-gray-600 mt-1">
-                          Recipients: {message.recipients.map(r => r.recipient.name).join(', ')}
-                        </p>
+                        <h3 className="text-xl font-semibold">{message.title}</h3>
+                        <p className="entity-meta">Type: {message.type}</p>
+                        <p className="entity-meta">Created: {new Date(message.createdAt).toLocaleDateString()}</p>
+                        <p className="entity-meta">Recipients: {message.recipients.map((r) => r.recipient.name).join(', ')}</p>
                       </div>
-                      <Link
-                        href={`/dashboard/messages/${message.id}`}
-                        className="text-blue-600 hover:text-blue-800"
-                      >
+                      <Link href={`/dashboard/messages/${message.id}`} className="btn btn-ghost">
                         View
                       </Link>
                     </div>
-                  </div>
+                  </article>
                 ))
               )}
             </div>
-          </div>
+          </section>
         )}
 
-        {/* Entries Tab */}
         {activeTab === 'entries' && (
-          <div>
-            <div className="mb-6 flex justify-between items-center">
-              <h2 className="text-xl font-semibold">Journal Entries</h2>
+          <section className="panel panel-strong p-5 md:p-6 mt-4 float-in" style={{ animationDelay: '130ms' }}>
+            <div className="section-head">
+              <div>
+                <h2 className="text-2xl">Journal Entries</h2>
+                <p className="section-subtitle">Recurring reflections with optional public sharing.</p>
+              </div>
               {canCreateEntry() ? (
-                <Link
-                  href="/dashboard/create-entry"
-                  className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
-                >
+                <Link href="/dashboard/create-entry" className="btn btn-primary">
                   Create Entry
                 </Link>
               ) : (
-                <div className="text-sm text-gray-600">
-                  Next entry available: {entries[0]?.nextEntryDate ? new Date(entries[0].nextEntryDate).toLocaleDateString() : 'N/A'}
-                </div>
+                <p className="entity-meta">
+                  Next entry available:{' '}
+                  {entries[0]?.nextEntryDate ? new Date(entries[0].nextEntryDate).toLocaleDateString() : 'N/A'}
+                </p>
               )}
             </div>
-            <div className="grid gap-4">
+
+            <div className="card-list">
               {entries.length === 0 ? (
-                <div className="bg-white p-8 rounded-lg shadow text-center text-gray-500">
-                  No entries yet. Create your first journal entry.
-                </div>
+                <div className="empty-state">No entries yet. Add your first journal note to begin the cadence.</div>
               ) : (
                 entries.map((entry) => (
-                  <div key={entry.id} className="bg-white p-6 rounded-lg shadow">
-                    <div className="flex justify-between items-start">
+                  <article key={entry.id} className="entity-card">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
-                        <h3 className="text-lg font-semibold mb-2">{entry.title}</h3>
-                        <p className="text-sm text-gray-600">
-                          Type: {entry.type} | {entry.isPublic ? 'Public' : 'Private'}
-                        </p>
-                        <p className="text-sm text-gray-600 mt-1">
+                        <h3 className="text-xl font-semibold">{entry.title}</h3>
+                        <p className="entity-meta">Type: {entry.type}</p>
+                        <p className="entity-meta">Visibility: {entry.isPublic ? 'Public' : 'Private'}</p>
+                        <p className="entity-meta">
                           Created: {new Date(entry.createdAt).toLocaleDateString()} | Interval: {entry.entryInterval} days
                         </p>
                       </div>
-                      <Link
-                        href={`/dashboard/entries/${entry.id}`}
-                        className="text-blue-600 hover:text-blue-800"
-                      >
+                      <Link href={`/dashboard/entries/${entry.id}`} className="btn btn-ghost">
                         View
                       </Link>
                     </div>
-                  </div>
+                  </article>
                 ))
               )}
             </div>
-          </div>
+          </section>
         )}
-      </div>
+      </main>
     </div>
   )
 }

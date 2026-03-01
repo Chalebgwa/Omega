@@ -1,11 +1,11 @@
-'use client'
-
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import Link from 'next/link'
+import { Link, useNavigate } from 'react-router-dom'
+import { useAuth } from '../contexts/AuthContext'
+import { APP_NAME, SOAP_BOX_NAME } from '../lib/brand'
 
-export default function RegisterPage() {
-  const router = useRouter()
+export function RegisterPage() {
+  const navigate = useNavigate()
+  const { register } = useAuth()
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -25,28 +25,12 @@ export default function RegisterPage() {
     }
 
     setLoading(true)
-
     try {
-      const response = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: formData.name,
-          email: formData.email,
-          password: formData.password,
-        }),
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Registration failed')
-      }
-
-      localStorage.setItem('token', data.token)
-      router.push('/dashboard')
-    } catch (err: any) {
-      setError(err.message)
+      await register(formData.name, formData.email, formData.password)
+      navigate('/dashboard')
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Registration failed'
+      setError(message)
     } finally {
       setLoading(false)
     }
@@ -56,15 +40,15 @@ export default function RegisterPage() {
     <div className="omega-page">
       <header className="omega-shell">
         <nav className="omega-nav fade-up">
-          <Link href="/" className="omega-brand">
+          <Link to="/" className="omega-brand">
             <span className="brand-dot" aria-hidden="true" />
-            Omega
+            {APP_NAME}
           </Link>
           <div className="nav-links">
-            <Link href="/public" className="nav-pill">
-              Soap Box
+            <Link to="/public" className="nav-pill">
+              {SOAP_BOX_NAME}
             </Link>
-            <Link href="/login" className="btn btn-ghost">
+            <Link to="/login" className="btn btn-ghost">
               Sign in
             </Link>
           </div>
@@ -79,7 +63,7 @@ export default function RegisterPage() {
                 <h2 className="section-title">Create account</h2>
                 <p className="section-subtitle">
                   Already have one?{' '}
-                  <Link href="/login" className="underline decoration-2 decoration-amber-500 underline-offset-4">
+                  <Link to="/login" className="underline decoration-2 decoration-amber-500 underline-offset-4">
                     Sign in
                   </Link>
                   .
@@ -152,7 +136,7 @@ export default function RegisterPage() {
                 <button type="submit" disabled={loading} className="btn btn-primary flex-1 disabled:cursor-not-allowed disabled:opacity-70">
                   {loading ? 'Creating account...' : 'Create account'}
                 </button>
-                <Link href="/" className="btn btn-ghost">
+                <Link to="/" className="btn btn-ghost">
                   Back Home
                 </Link>
               </div>
@@ -160,24 +144,24 @@ export default function RegisterPage() {
           </section>
 
           <section className="panel panel-dark p-6 md:p-8 float-in order-1 lg:order-2" style={{ animationDelay: '120ms' }}>
-            <span className="pill">Start strong</span>
-            <h1 className="mt-3 text-4xl leading-tight">Set up your legacy workspace in under a minute.</h1>
+            <span className="pill">Join the community</span>
+            <h1 className="mt-3 text-4xl leading-tight">Set up your social space in under a minute.</h1>
             <p className="mt-3 text-sm text-slate-200/90">
-              Once signed up, you can create private messages, schedule entries, and publish to Soap Box whenever you choose.
+              Once signed up, you can DM loved ones, schedule your own posts, and jump into {SOAP_BOX_NAME} convos.
             </p>
 
             <div className="stack mt-8">
               <div className="metric">
-                <strong>Message by recipient</strong>
-                <span>Address people directly, one at a time.</span>
+                <strong>DM by person</strong>
+                <span>Send direct messages for any occasion.</span>
               </div>
               <div className="metric">
-                <strong>Journal cadence</strong>
-                <span>Choose intervals that fit your pace.</span>
+                <strong>Post on your rhythm</strong>
+                <span>Keep a personal stream with optional public sharing.</span>
               </div>
               <div className="metric">
-                <strong>Optional public mode</strong>
-                <span>Share selected thoughts with everyone.</span>
+                <strong>React + Comment</strong>
+                <span>Join conversations and keep the feed moving.</span>
               </div>
             </div>
           </section>
