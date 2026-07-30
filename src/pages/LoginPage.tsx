@@ -1,7 +1,38 @@
-import { useState } from 'react'
+import { useState, type ChangeEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import type { FirebaseError } from 'firebase/app'
 import { useAuth } from '../contexts/AuthContext'
 import { APP_NAME, SOAP_BOX_NAME } from '../lib/brand'
+
+const FALLBACK_LOGIN_ERROR = 'Unable to sign in right now. Please try again.'
+
+function isFirebaseError(error: unknown): error is FirebaseError {
+  return typeof error === 'object' && error !== null && 'code' in error && typeof error.code === 'string'
+}
+
+function formatLoginError(error: unknown): string {
+  if (!isFirebaseError(error)) {
+    return FALLBACK_LOGIN_ERROR
+  }
+
+  switch (error.code) {
+    case 'auth/invalid-email':
+      return 'Enter a valid email address.'
+    case 'auth/invalid-credential':
+    case 'auth/invalid-login-credentials':
+    case 'auth/user-not-found':
+    case 'auth/wrong-password':
+      return 'Incorrect email or password.'
+    case 'auth/user-disabled':
+      return 'This account has been disabled. Contact support for help.'
+    case 'auth/too-many-requests':
+      return 'Too many login attempts. Please wait a moment and try again.'
+    case 'auth/network-request-failed':
+      return 'Network issue detected. Check your connection and try again.'
+    default:
+      return FALLBACK_LOGIN_ERROR
+  }
+}
 
 export function LoginPage() {
   const navigate = useNavigate()
@@ -13,6 +44,17 @@ export function LoginPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
+  const handleInputChange = (field: 'email' | 'password') => (event: ChangeEvent<HTMLInputElement>) => {
+    if (error) {
+      setError('')
+    }
+
+    setFormData((previous) => ({
+      ...previous,
+      [field]: event.target.value,
+    }))
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
@@ -22,8 +64,7 @@ export function LoginPage() {
       await login(formData.email, formData.password)
       navigate('/dashboard')
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Login failed'
-      setError(message)
+      setError(formatLoginError(err))
     } finally {
       setLoading(false)
     }
@@ -88,7 +129,11 @@ export function LoginPage() {
             </div>
 
             <form className="form-grid" onSubmit={handleSubmit}>
-              {error && <div className="notice-error">{error}</div>}
+              {error && (
+                <div className="notice-error" role="alert" aria-live="polite">
+                  {error}
+                </div>
+              )}
 
               <div className="field">
                 <label htmlFor="email">Email address</label>
@@ -100,7 +145,7 @@ export function LoginPage() {
                   className="input"
                   placeholder="you@example.com"
                   value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  onChange={handleInputChange('email')}
                 />
               </div>
 
@@ -114,7 +159,7 @@ export function LoginPage() {
                   className="input"
                   placeholder="Enter your password"
                   value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  onChange={handleInputChange('password')}
                 />
               </div>
 

@@ -35,7 +35,13 @@ service cloud.firestore {
         && request.resource.data.recipientIds.size() > 0
         && request.resource.data.type in ['text', 'video'];
 
-      allow read, update, delete: if signedIn() && resource.data.authorId == request.auth.uid;
+      allow read: if signedIn()
+        && (
+          resource.data.authorId == request.auth.uid
+          || request.auth.uid in resource.data.recipientIds
+        );
+
+      allow update, delete: if signedIn() && resource.data.authorId == request.auth.uid;
     }
 
     match /entries/{entryId} {

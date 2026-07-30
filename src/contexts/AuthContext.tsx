@@ -36,15 +36,19 @@ function fallbackName(email: string | null): string {
   return local ? local.charAt(0).toUpperCase() + local.slice(1) : 'Member'
 }
 
-async function loadOrCreateProfile(firebaseUser: User): Promise<AppUserProfile> {
-  const existing = await getUserProfile(firebaseUser.uid)
-  if (existing) return existing
-
-  const profile: AppUserProfile = {
+function buildFallbackProfile(firebaseUser: User): AppUserProfile {
+  return {
     uid: firebaseUser.uid,
     name: firebaseUser.displayName || fallbackName(firebaseUser.email),
     email: (firebaseUser.email || '').toLowerCase(),
   }
+}
+
+async function loadOrCreateProfile(firebaseUser: User): Promise<AppUserProfile> {
+  const existing = await getUserProfile(firebaseUser.uid)
+  if (existing) return existing
+
+  const profile: AppUserProfile = buildFallbackProfile(firebaseUser)
   await ensureUserProfile(profile)
   return profile
 }
@@ -69,11 +73,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(profile)
       } catch (error) {
         console.error('Failed to load user profile:', error)
-        setUser({
-          uid: nextUser.uid,
-          name: nextUser.displayName || fallbackName(nextUser.email),
-          email: (nextUser.email || '').toLowerCase(),
-        })
+        setUser(buildFallbackProfile(nextUser))
       } finally {
         setLoading(false)
       }
@@ -83,22 +83,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const register = useCallback(async (name: string, email: string, password: string) => {
-    const credential = await createUserWithEmailAndPassword(auth, email.trim(), password)
-    const cleanName = name.trim()
+    setLoading(true)
+    try {
+      const cleanEmail = email.trim().toLowerCase()
+      const credential = await createUserWithEmailAndPassword(auth, cleanEmail, password)
+      const cleanName = name.trim()
 
-    if (cleanName) {
-      await updateProfile(credential.user, { displayName: cleanName })
+      if (cleanName) {
+        await updateProfile(credential.user, { displayName: cleanName })
+      }
+
+      const profile: AppUserProfile = {
+        uid: credential.user.uid,
+        name: cleanName || fallbackName(cleanEmail),
+        email: cleanEmail,
+      }
+
+      await ensureUserProfile(profile)
+      setFirebaseUser(credential.user)
+      setUser(profile)
+    } finally {
+      setLoading(false)
     }
-
-    await ensureUserProfile({
-      uid: credential.user.uid,
-      name: cleanName || fallbackName(email),
-      email: email.trim().toLowerCase(),
-    })
   }, [])
 
   const login = useCallback(async (email: string, password: string) => {
-    await signInWithEmailAndPassword(auth, email.trim(), password)
+    setLoading(true)
+    try {
+      const credential = await signInWithEmailAndPassword(auth, email.trim(), password)
+      setFirebaseUser(credential.user)
+
+      try {
+        const profile = await loadOrCreateProfile(credential.user)
+        setUser(profile)
+      } catch (error) {
+        console.error('Failed to hydrate user profile during login:', error)
+        setUser(buildFallbackProfile(credential.user))
+      }
+    } finally {
+      setLoading(false)
+    }
   }, [])
 
   const logout = useCallback(async () => {

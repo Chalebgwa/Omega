@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { MarkupEditor } from '../components/MarkupEditor'
 import {
   ENTRY_REACTION_TYPES,
   createEntryComment,
@@ -393,8 +394,7 @@ export function PublicPage() {
 
                   {entry.type === 'video' && entry.videoUrl ? (
                     <div className="mt-4 overflow-hidden rounded-2xl border border-slate-300/40 bg-white/70 p-2">
-                      <video controls className="w-full rounded-xl">
-                        <source src={entry.videoUrl} type="video/mp4" />
+                      <video controls className="w-full rounded-xl" src={entry.videoUrl}>
                         Your browser does not support the video tag.
                       </video>
                     </div>
@@ -437,7 +437,10 @@ export function PublicPage() {
                               <p className="comment-author">{comment.authorName || 'Member'}</p>
                               <p className="entity-meta">{formatDate(comment.createdAt)}</p>
                             </div>
-                            <p className="comment-content">{comment.content}</p>
+                            <div
+                              className="markup-content comment-content"
+                              dangerouslySetInnerHTML={{ __html: renderMarkupToHtml(comment.content) }}
+                            />
                             {user?.uid === comment.authorId && (
                               <button
                                 type="button"
@@ -461,15 +464,18 @@ export function PublicPage() {
                           void handleCommentSubmit(entry.id)
                         }}
                       >
-                        <textarea
-                          className="textarea comment-input"
+                        <MarkupEditor
+                          id={`comment-${entry.id}`}
+                          label="Add Comment"
+                          required
                           rows={3}
                           placeholder="Add your comment..."
+                          helperText="You can use basic formatting before posting."
                           value={commentDraftByEntry[entry.id] ?? ''}
-                          onChange={(event) =>
+                          onChange={(content) =>
                             setCommentDraftByEntry((prev) => ({
                               ...prev,
-                              [entry.id]: event.target.value,
+                              [entry.id]: content,
                             }))
                           }
                         />

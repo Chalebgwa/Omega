@@ -1,10 +1,11 @@
-# VibeLoop (React + Firebase)
+# Omega (React + Firebase)
 
-VibeLoop is a client-only React app built for easy deployment on Firebase Hosting's free tier.
+Omega is a client-only React app built for easy deployment on Firebase Hosting's free tier.
 
 The previous Next.js + Prisma backend flow has been replaced with Firebase services:
 - Firebase Auth for login/register
 - Cloud Firestore for direct messages, public/private posts, comments, and reactions
+- Firebase Storage for recorded videos
 - Firebase Hosting for SPA deployment
 
 ## Stack
@@ -77,10 +78,10 @@ firebase apps:sdkconfig WEB <app-id>
 3. Enable Email/Password provider in Firebase Console:
 - Authentication -> Sign-in method -> Email/Password -> Enable
 
-4. Deploy Firestore rules and indexes:
+4. Deploy Firestore and Storage rules/indexes:
 
 ```bash
-firebase deploy --only firestore:rules,firestore:indexes
+firebase deploy --only firestore:rules,firestore:indexes,storage
 ```
 
 5. Deploy Hosting:
@@ -103,9 +104,15 @@ firebase deploy --only hosting
 - `entryReactions/{entryId_userId}`
   - `entryId`, `userId`, `userName`, `reactionType` (`love|facts|wow|support`), timestamps
 
+## Storage paths
+
+- `videos/entries/{authorUid}/{file}`
+- `videos/messages/{authorUid}/{file}`
+
 ## Security config
 
 - Firestore rules: `firestore.rules`
 - Firestore indexes: `firestore.indexes.json`
+- Storage rules: `storage.rules`
 
 Deploy them with Firebase CLI before using the app in production.

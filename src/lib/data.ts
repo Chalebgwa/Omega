@@ -13,7 +13,8 @@ import {
   updateDoc,
   where,
 } from 'firebase/firestore'
-import { db } from './firebase'
+import { getDownloadURL, ref, uploadBytes } from 'firebase/storage'
+import { db, storage } from './firebase'
 import type { AppUserProfile, ContentType, Entry, EntryComment, EntryReactionType, Message } from '../types/models'
 
 const usersRef = collection(db, 'users')
@@ -41,6 +42,33 @@ function toDate(value: unknown): Date | null {
     return (value as { toDate: () => Date }).toDate()
   }
   return null
+}
+
+type VideoUploadScope = 'entries' | 'messages'
+
+function fileExtensionFromMimeType(mimeType: string): string {
+  if (mimeType.includes('mp4')) return 'mp4'
+  if (mimeType.includes('ogg')) return 'ogv'
+  return 'webm'
+}
+
+function randomId(length = 10): string {
+  return Math.random()
+    .toString(36)
+    .slice(2, 2 + length)
+}
+
+export async function uploadRecordedVideo(input: { file: Blob; ownerId: string; scope: VideoUploadScope }): Promise<string> {
+  const mimeType = input.file.type || 'video/webm'
+  const extension = fileExtensionFromMimeType(mimeType)
+  const path = `videos/${input.scope}/${input.ownerId}/${Date.now()}-${randomId()}.${extension}`
+  const uploadRef = ref(storage, path)
+
+  await uploadBytes(uploadRef, input.file, {
+    contentType: mimeType,
+  })
+
+  return getDownloadURL(uploadRef)
 }
 
 export const ENTRY_REACTION_TYPES: EntryReactionType[] = ['love', 'facts', 'wow', 'support']
@@ -157,6 +185,12 @@ function mapEntryComment(id: string, data: Record<string, unknown>): EntryCommen
 
 export async function fetchMyMessages(uid: string): Promise<Message[]> {
   const q = query(messagesRef, where('authorId', '==', uid), orderBy('createdAt', 'desc'))
+  const snapshot = await getDocs(q)
+  return snapshot.docs.map((d) => mapMessage(d.id, d.data()))
+}
+
+export async function fetchInboxMessages(uid: string): Promise<Message[]> {
+  const q = query(messagesRef, where('recipientIds', 'array-contains', uid), orderBy('createdAt', 'desc'))
   const snapshot = await getDocs(q)
   return snapshot.docs.map((d) => mapMessage(d.id, d.data()))
 }
@@ -356,7 +390,7 @@ export async function createMessage(input: CreateMessageInput): Promise<void> {
     throw new Error('Message content is required for text messages')
   }
   if (type === 'video' && !input.videoUrl?.trim()) {
-    throw new Error('Video URL is required for video messages')
+    throw new Error('Video is required for video messages')
   }
 
   await addDoc(messagesRef, {
@@ -408,7 +442,7 @@ export async function createEntry(input: CreateEntryInput): Promise<void> {
     throw new Error('Entry content is required for text entries')
   }
   if (type === 'video' && !input.videoUrl?.trim()) {
-    throw new Error('Video URL is required for video entries')
+    throw new Error('Video is required for video entries')
   }
 
   const nextEntryDate = new Date()
@@ -443,7 +477,7 @@ export async function updateEntry(entryId: string, input: UpdateEntryInput): Pro
     throw new Error('Entry content is required for text entries')
   }
   if (type === 'video' && !input.videoUrl?.trim()) {
-    throw new Error('Video URL is required for video entries')
+    throw new Error('Video is required for video entries')
   }
 
   const nextEntryDate = new Date()

@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { fetchEntryById, updateEntry } from '../lib/data'
+import { EntryIntervalField } from '../components/EntryIntervalField'
+import { MarkupEditor } from '../components/MarkupEditor'
+import { VideoRecorderField } from '../components/VideoRecorderField'
+import { fetchEntryById, updateEntry, uploadRecordedVideo } from '../lib/data'
 import { useAuth } from '../contexts/AuthContext'
 import { APP_NAME, SOAP_BOX_NAME } from '../lib/brand'
-import { renderMarkupToHtml } from '../lib/markup'
 
 export function EditEntryPage() {
   const navigate = useNavigate()
@@ -19,7 +21,7 @@ export function EditEntryPage() {
     entryInterval: '30',
     videoUrl: '',
   })
-  const [editorMode, setEditorMode] = useState<'write' | 'preview'>('write')
+  const [recordedVideoFile, setRecordedVideoFile] = useState<File | null>(null)
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
 
@@ -51,6 +53,7 @@ export function EditEntryPage() {
           entryInterval: String(entry.entryInterval),
           videoUrl: entry.videoUrl ?? '',
         })
+        setRecordedVideoFile(null)
       } catch (err) {
         console.error('Failed to load entry:', err)
         setError('Failed to load entry.')
@@ -76,8 +79,23 @@ export function EditEntryPage() {
       return
     }
 
+    if (formData.type === 'video' && !recordedVideoFile && !formData.videoUrl) {
+      setError('Record a video before saving your post.')
+      return
+    }
+
     setSaving(true)
     try {
+      let videoUrl = formData.type === 'video' ? formData.videoUrl : undefined
+
+      if (formData.type === 'video' && recordedVideoFile) {
+        videoUrl = await uploadRecordedVideo({
+          file: recordedVideoFile,
+          ownerId: user.uid,
+          scope: 'entries',
+        })
+      }
+
       await updateEntry(entryId, {
         title: formData.title,
         content: formData.content,
@@ -85,7 +103,7 @@ export function EditEntryPage() {
         isPublic: formData.isPublic,
         isAnonymous: formData.isAnonymous,
         entryInterval: Number.parseInt(formData.entryInterval, 10),
-        videoUrl: formData.type === 'video' ? formData.videoUrl : undefined,
+        videoUrl,
       })
 
       navigate('/dashboard')
@@ -169,77 +187,38 @@ export function EditEntryPage() {
             </div>
 
             {formData.type === 'text' ? (
-              <div className="field">
-                <div className="flex items-center justify-between gap-2">
-                  <label htmlFor="content">Post Content *</label>
-                  <div className="tab-row" role="tablist" aria-label="Editor mode">
-                    <button
-                      type="button"
-                      className={`tab-btn ${editorMode === 'write' ? 'active' : ''}`}
-                      onClick={() => setEditorMode('write')}
-                    >
-                      Write
-                    </button>
-                    <button
-                      type="button"
-                      className={`tab-btn ${editorMode === 'preview' ? 'active' : ''}`}
-                      onClick={() => setEditorMode('preview')}
-                    >
-                      Preview
-                    </button>
-                  </div>
-                </div>
-                {editorMode === 'write' ? (
-                  <textarea
-                    id="content"
-                    required
-                    rows={10}
-                    className="textarea"
-                    value={formData.content}
-                    onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-                    placeholder="Write your post here..."
-                  />
-                ) : (
-                  <div className="markup-preview">
-                    <div
-                      className="markup-content"
-                      dangerouslySetInnerHTML={{ __html: renderMarkupToHtml(formData.content) }}
-                    />
-                  </div>
-                )}
-                <p className="field-help">
-                  Markup supported: headings (#), bold (**text**), italics (*text*), links, lists, blockquotes, and code.
-                </p>
-              </div>
+              <MarkupEditor
+                id="content"
+                label="Post Content *"
+                required
+                rows={10}
+                value={formData.content}
+                onChange={(content) =>
+                  setFormData((previous) => ({
+                    ...previous,
+                    content,
+                  }))
+                }
+              />
             ) : (
-              <div className="field">
-                <label htmlFor="videoUrl">Video URL *</label>
-                <input
-                  type="url"
-                  id="videoUrl"
-                  required
-                  className="input"
-                  value={formData.videoUrl}
-                  onChange={(e) => setFormData({ ...formData, videoUrl: e.target.value })}
-                  placeholder="https://example.com/video.mp4"
-                />
-                <p className="field-help">Enter a direct URL to the video file you want to attach.</p>
-              </div>
+              <VideoRecorderField
+                id="entryVideo"
+                label="Record Video *"
+                existingVideoUrl={formData.videoUrl}
+                onChange={setRecordedVideoFile}
+                helperText="Re-record to replace the current video, or keep the existing one."
+              />
             )}
 
-            <div className="field">
-              <label htmlFor="entryInterval">Next Post Interval (days) *</label>
-              <input
-                type="number"
-                id="entryInterval"
-                required
-                min="1"
-                className="input"
-                value={formData.entryInterval}
-                onChange={(e) => setFormData({ ...formData, entryInterval: e.target.value })}
-              />
-              <p className="field-help">How many days until your next scheduled post can be created.</p>
-            </div>
+            <EntryIntervalField
+              value={formData.entryInterval}
+              onChange={(entryInterval) =>
+                setFormData((previous) => ({
+                  ...previous,
+                  entryInterval,
+                }))
+              }
+            />
 
             <label htmlFor="isPublic" className="checkbox-row">
               <input

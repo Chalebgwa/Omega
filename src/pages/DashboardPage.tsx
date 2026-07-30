@@ -1,34 +1,78 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { deleteEntry, fetchMyEntries, fetchMyMessages } from '../lib/data'
+import { deleteEntry, fetchInboxMessages, fetchMyEntries, fetchMyMessages } from '../lib/data'
 import { useAuth } from '../contexts/AuthContext'
 import { APP_NAME, SOAP_BOX_NAME } from '../lib/brand'
+import { renderMarkupToHtml } from '../lib/markup'
 import type { Entry, Message } from '../types/models'
 
 type Tab = 'messages' | 'entries'
+type MessageView = 'inbox' | 'sent'
 
 export function DashboardPage() {
   const navigate = useNavigate()
   const { user, logout } = useAuth()
-  const [messages, setMessages] = useState<Message[]>([])
+  const [sentMessages, setSentMessages] = useState<Message[]>([])
+  const [inboxMessages, setInboxMessages] = useState<Message[]>([])
   const [entries, setEntries] = useState<Entry[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [deletingEntryId, setDeletingEntryId] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<Tab>('messages')
+  const [activeMessageView, setActiveMessageView] = useState<MessageView>('inbox')
+  const lastLoadedUidRef = useRef<string | null>(null)
 
   useEffect(() => {
     if (!user) return
+
+    // Avoid duplicate fetches/logs caused by React StrictMode double-invoking effects in dev.
+    if (import.meta.env.DEV && lastLoadedUidRef.current === user.uid) {
+      return
+    }
+    lastLoadedUidRef.current = user.uid
 
     const load = async () => {
       try {
         setError('')
         setLoading(true)
-        const [nextMessages, nextEntries] = await Promise.all([fetchMyMessages(user.uid), fetchMyEntries(user.uid)])
-        setMessages(nextMessages)
-        setEntries(nextEntries)
+
+        const [sentResult, inboxResult, entriesResult] = await Promise.allSettled([
+          fetchMyMessages(user.uid),
+          fetchInboxMessages(user.uid),
+          fetchMyEntries(user.uid),
+        ])
+
+        const notices: string[] = []
+
+        if (sentResult.status === 'fulfilled') {
+          setSentMessages(sentResult.value)
+        } else {
+          console.error('Failed to load sent messages:', sentResult.reason)
+          notices.push('Sent messages could not be loaded.')
+        }
+
+        if (inboxResult.status === 'fulfilled') {
+          setInboxMessages(inboxResult.value)
+        } else {
+          console.error('Failed to load inbox messages:', inboxResult.reason)
+          const reason = inboxResult.reason as { code?: string } | undefined
+          if (reason?.code === 'permission-denied') {
+            notices.push('Inbox is unavailable due to Firestore permissions. Deploy the latest rules/indexes.')
+          } else {
+            notices.push('Inbox messages could not be loaded.')
+          }
+        }
+
+        if (entriesResult.status === 'fulfilled') {
+          setEntries(entriesResult.value)
+        } else {
+          console.error('Failed to load entries:', entriesResult.reason)
+          notices.push('Posts could not be loaded.')
+        }
+
+        setError(notices.join(' '))
       } catch (err) {
-        console.error('Failed to load dashboard data:', err)
+        console.error('Unexpected dashboard load failure:', err)
         setError('Failed to load dashboard data.')
       } finally {
         setLoading(false)
@@ -43,6 +87,10 @@ export function DashboardPage() {
     if (!lastEntry?.nextEntryDate) return true
     return lastEntry.nextEntryDate <= new Date()
   }, [entries])
+
+  const totalMessages = sentMessages.length + inboxMessages.length
+
+  const visibleMessages = activeMessageView === 'inbox' ? inboxMessages : sentMessages
 
   const handleLogout = async () => {
     await logout()
@@ -121,8 +169,8 @@ export function DashboardPage() {
           <div className="grid gap-3 md:grid-cols-3">
             <div className="entity-card">
               <p className="pill">Messages</p>
-              <h2 className="mt-2 text-3xl font-semibold">{messages.length}</h2>
-              <p className="entity-meta">Direct messages to your people</p>
+              <h2 className="mt-2 text-3xl font-semibold">{totalMessages}</h2>
+              <p className="entity-meta">Inbox: {inboxMessages.length} | Sent: {sentMessages.length}</p>
             </div>
             <div className="entity-card">
               <p className="pill">Posts</p>
@@ -146,7 +194,7 @@ export function DashboardPage() {
               className={`tab-btn ${activeTab === 'messages' ? 'active' : ''}`}
               type="button"
             >
-              Messages ({messages.length})
+              Messages ({totalMessages})
             </button>
             <button
               onClick={() => setActiveTab('entries')}
@@ -163,33 +211,75 @@ export function DashboardPage() {
             <div className="section-head">
               <div>
                 <h2 className="text-2xl">Private Messages</h2>
-                <p className="section-subtitle">A private lane for birthdays, check-ins, and everything personal.</p>
+                <p className="section-subtitle">
+                  {activeMessageView === 'inbox'
+                    ? 'Messages you received from other members.'
+                    : 'Messages you have sent to other members.'}
+                </p>
               </div>
               <Link to="/dashboard/create-message" className="btn btn-primary">
                 Create Message
               </Link>
             </div>
 
+            <div className="tab-row mb-4">
+              <button
+                type="button"
+                className={`tab-btn ${activeMessageView === 'inbox' ? 'active' : ''}`}
+                onClick={() => setActiveMessageView('inbox')}
+              >
+                Inbox ({inboxMessages.length})
+              </button>
+              <button
+                type="button"
+                className={`tab-btn ${activeMessageView === 'sent' ? 'active' : ''}`}
+                onClick={() => setActiveMessageView('sent')}
+              >
+                Sent ({sentMessages.length})
+              </button>
+            </div>
+
             <div className="card-list">
-              {messages.length === 0 ? (
-                <div className="empty-state">No messages yet. Create your first private note to get started.</div>
+              {visibleMessages.length === 0 ? (
+                <div className="empty-state">
+                  {activeMessageView === 'inbox'
+                    ? 'Your inbox is empty. Messages sent to you will appear here.'
+                    : 'No sent messages yet. Create your first private note to get started.'}
+                </div>
               ) : (
-                messages.map((message) => (
+                visibleMessages.map((message) => (
                   <article key={message.id} className="entity-card">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
                         <h3 className="text-xl font-semibold">{message.title}</h3>
                         <p className="entity-meta">Type: {message.type}</p>
                         <p className="entity-meta">Created: {message.createdAt?.toLocaleDateString() || 'Recently'}</p>
-                        <p className="entity-meta">
-                          Recipients:{' '}
-                          {message.recipientNames.length > 0
-                            ? message.recipientNames.join(', ')
-                            : message.recipientEmails.join(', ')}
-                        </p>
+                        {activeMessageView === 'inbox' ? (
+                          <p className="entity-meta">From: {message.authorName || 'Member'}</p>
+                        ) : (
+                          <p className="entity-meta">
+                            To:{' '}
+                            {message.recipientNames.length > 0
+                              ? message.recipientNames.join(', ')
+                              : message.recipientEmails.join(', ')}
+                          </p>
+                        )}
                       </div>
-                      <span className="pill">Saved</span>
+                      <span className="pill">{activeMessageView === 'inbox' ? 'Incoming' : 'Sent'}</span>
                     </div>
+
+                    {message.type === 'video' && message.videoUrl ? (
+                      <div className="mt-4 overflow-hidden rounded-2xl border border-slate-300/40 bg-white/70 p-2">
+                        <video controls className="w-full rounded-xl" src={message.videoUrl}>
+                          Your browser does not support the video tag.
+                        </video>
+                      </div>
+                    ) : (
+                      <div
+                        className="markup-content mt-4 text-[0.95rem] text-slate-700"
+                        dangerouslySetInnerHTML={{ __html: renderMarkupToHtml(message.content) }}
+                      />
+                    )}
                   </article>
                 ))
               )}

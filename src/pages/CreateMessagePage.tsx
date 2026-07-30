@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { createMessage } from '../lib/data'
+import { MarkupEditor } from '../components/MarkupEditor'
+import { VideoRecorderField } from '../components/VideoRecorderField'
+import { createMessage, uploadRecordedVideo } from '../lib/data'
 import { useAuth } from '../contexts/AuthContext'
 import { APP_NAME, SOAP_BOX_NAME } from '../lib/brand'
 
@@ -12,8 +14,8 @@ export function CreateMessagePage() {
     content: '',
     type: 'text',
     recipientEmails: '',
-    videoUrl: '',
   })
+  const [recordedVideoFile, setRecordedVideoFile] = useState<File | null>(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -26,6 +28,11 @@ export function CreateMessagePage() {
       return
     }
 
+    if (formData.type === 'video' && !recordedVideoFile) {
+      setError('Record a video before sending your message.')
+      return
+    }
+
     setLoading(true)
     try {
       const recipientEmails = formData.recipientEmails
@@ -33,12 +40,21 @@ export function CreateMessagePage() {
         .map((email) => email.trim())
         .filter((email) => email.length > 0)
 
+      const videoUrl =
+        formData.type === 'video' && recordedVideoFile
+          ? await uploadRecordedVideo({
+              file: recordedVideoFile,
+              ownerId: user.uid,
+              scope: 'messages',
+            })
+          : undefined
+
       await createMessage({
         title: formData.title,
         content: formData.content,
         type: formData.type === 'video' ? 'video' : 'text',
         recipientEmails,
-        videoUrl: formData.type === 'video' ? formData.videoUrl : undefined,
+        videoUrl,
         author: user,
       })
 
@@ -113,32 +129,28 @@ export function CreateMessagePage() {
             </div>
 
             {formData.type === 'text' ? (
-              <div className="field">
-              <label htmlFor="content">Message Content *</label>
-              <textarea
+              <MarkupEditor
                 id="content"
+                label="Message Content *"
                 required
                 rows={8}
-                className="textarea"
                 value={formData.content}
-                onChange={(e) => setFormData({ ...formData, content: e.target.value })}
+                onChange={(content) =>
+                  setFormData((previous) => ({
+                    ...previous,
+                    content,
+                  }))
+                }
                 placeholder="Write your message..."
+                helperText="Formatting is supported: headings, emphasis, links, lists, quotes, and code."
               />
-            </div>
             ) : (
-              <div className="field">
-                <label htmlFor="videoUrl">Video URL *</label>
-                <input
-                  type="url"
-                  id="videoUrl"
-                  required
-                  className="input"
-                  value={formData.videoUrl}
-                  onChange={(e) => setFormData({ ...formData, videoUrl: e.target.value })}
-                  placeholder="https://example.com/video.mp4"
-                />
-                <p className="field-help">Enter a direct URL to your video file hosted online.</p>
-              </div>
+              <VideoRecorderField
+                id="messageVideo"
+                label="Record Video *"
+                onChange={setRecordedVideoFile}
+                helperText="Record your message instead of pasting a video link."
+              />
             )}
 
             <div className="field">
